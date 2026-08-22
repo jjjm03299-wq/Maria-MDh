@@ -9,7 +9,7 @@ const axios = require('axios')
 const PhoneNumber = require('awesome-phonenumber')
 const { imageToWebp, videoToWebp, writeExifImg, writeExifVid } = require('./Gallery/lib/exif')
 const { smsg, isUrl, generateMessageTag, getBuffer, getSizeMedia, fetch, await, sleep, reSize } = require('./Gallery/lib/myfunc')
-const { default: MariaConnect, delay, PHONENUMBER_MCC, makeCacheableSignalKeyStore, useMultiFileAuthState, DisconnectReason, fetchLatestBaileysVersion, generateForwardMessageContent, prepareWAMessageMedia, generateWAMessageFromContent, generateMessageID, downloadContentFromMessage, makeInMemoryStore, jidDecode, proto } = require("@whiskeysockets/baileys")
+const { default: MariaConnect, delay, makeCacheableSignalKeyStore, useMultiFileAuthState, DisconnectReason, fetchLatestBaileysVersion, generateForwardMessageContent, prepareWAMessageMedia, generateWAMessageFromContent, generateMessageID, downloadContentFromMessage, makeInMemoryStore, jidDecode, proto } = require("@whiskeysockets/baileys")
 const NodeCache = require("node-cache")
 const Pino = require("pino")
 const readline = require("readline")
@@ -139,27 +139,24 @@ const {  state, saveCreds } =await useMultiFileAuthState(`./session`)
    if (pairingCode && !Maria.authState.creds.registered) {
       if (useMobile) throw new Error('Cannot use pairing code with mobile api')
 
-      let mccKeys = PHONENUMBER_MCC ? Object.keys(PHONENUMBER_MCC) : []
+      let targetPhone = phoneNumber
+      if (!targetPhone) {
+         targetPhone = await question(chalk.bgBlack(chalk.greenBright(`Please type your WhatsApp number 😍\nFor example: +916909137213 : `)))
+      }
 
-      if (!!phoneNumber) {
-         phoneNumber = phoneNumber.replace(/[^0-9]/g, '')
-
-         if (!mccKeys.some(v => phoneNumber.startsWith(v))) {
-            console.log(chalk.bgBlack(chalk.redBright("Start with country code of your WhatsApp Number, Example : +916909137213")))
-            process.exit(0)
-         }
-      } else {
-         phoneNumber = await question(chalk.bgBlack(chalk.greenBright(`Please type your WhatsApp number 😍\nFor example: +916909137213 : `)))
-         phoneNumber = phoneNumber.replace(/[^0-9]/g, '')
-
-         if (!mccKeys.some(v => phoneNumber.startsWith(v))) {
-            console.log(chalk.bgBlack(chalk.redBright("Start with country code of your WhatsApp Number, Example : +916909137213")))
-
-            phoneNumber = await question(chalk.bgBlack(chalk.greenBright(`Please type your WhatsApp number 😍\nFor example: +916909137213 : `)))
-            phoneNumber = phoneNumber.replace(/[^0-9]/g, '')
-            rl.close()
+      let parsed = parsePhoneNumber(targetPhone.startsWith('+') ? targetPhone : '+' + targetPhone)
+      if (!parsed || !parsed.isValid()) {
+         console.log(chalk.bgBlack(chalk.redBright("Start with country code of your WhatsApp Number, Example : +916909137213")))
+         targetPhone = await question(chalk.bgBlack(chalk.greenBright(`Please type your WhatsApp number 😍\nFor example: +916909137213 : `)))
+         parsed = parsePhoneNumber(targetPhone.startsWith('+') ? targetPhone : '+' + targetPhone)
+         if (!parsed || !parsed.isValid()) {
+             console.log(chalk.bgBlack(chalk.redBright("Invalid phone number format. Exiting.")))
+             process.exit(0)
          }
       }
+
+      phoneNumber = parsed.format('E.164').replace('+', '')
+      rl.close()
 
       setTimeout(async () => {
          let code = await Maria.requestPairingCode(phoneNumber)
