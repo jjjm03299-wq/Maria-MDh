@@ -54,7 +54,6 @@ async function verifyPinLock() {
     let pinData = getPinData()
     const now = Date.now()
 
-    // Check Lockout
     if (pinData.lockoutUntil && now < pinData.lockoutUntil) {
         const remainingHours = Math.ceil((pinData.lockoutUntil - now) / (1000 * 60 * 60))
         console.log(chalk.bgRed.black(` Too many failed attempts! Try again in ${remainingHours} hour(s). `))
@@ -65,7 +64,6 @@ async function verifyPinLock() {
         savePinData(pinData)
     }
 
-    // Setup PIN if not exists
     if (!pinData.pin) {
         console.log(chalk.yellow('=== PIN LOCK SETUP ==='))
         let newPin = await question(chalk.green('Enter new PIN to secure your bot: '))
@@ -84,7 +82,6 @@ async function verifyPinLock() {
         console.log(chalk.green('PIN successfully configured!\n'))
     }
 
-    // Login Verification Loop
     console.log(chalk.cyan('=== SECURE LOGIN REQUIRED ==='))
     while (true) {
         let enteredPin = await question(chalk.magenta('Enter PIN to login (Press 1 to exit): '))
@@ -100,7 +97,7 @@ async function verifyPinLock() {
         } else {
             pinData.attempts += 1
             if (pinData.attempts >= 3) {
-                pinData.lockoutUntil = Date.now() + (8 * 60 * 60 * 1000) // 8 hours lockout
+                pinData.lockoutUntil = Date.now() + (8 * 60 * 60 * 1000)
                 savePinData(pinData)
                 console.log(chalk.bgRed.black(' Too many failed attempts! Locked out for 8 hours. '))
                 process.exit(0)
@@ -116,40 +113,38 @@ async function startMaria() {
 //------------------------------------------------------
 let { version, isLatest } = await fetchLatestBaileysVersion()
 const {  state, saveCreds } =await useMultiFileAuthState(`./session`)
-    const msgRetryCounterCache = new NodeCache() // for retry message, "waiting message"
+    const msgRetryCounterCache = new NodeCache() 
     const Maria = makeWASocket({
         logger: pino({ level: 'silent' }),
-        printQRInTerminal: !pairingCode, // popping up QR in terminal log
-      mobile: useMobile, // mobile api (prone to bans)
-      browser: ['Chrome (Linux)', '', ''], // for this issues https://github.com/WhiskeySockets/Baileys/issues/328
-     auth: {
+        printQRInTerminal: !pairingCode, 
+      mobile: useMobile, 
+      browser: ['Chrome (Linux)', '', ''], 
+      auth: {
          creds: state.creds,
          keys: makeCacheableSignalKeyStore(state.keys, Pino({ level: "fatal" }).child({ level: "fatal" })),
       },
-      browser: ['Chrome (Linux)', '', ''], // for this issues https://github.com/WhiskeySockets/Baileys/issues/328
-      markOnlineOnConnect: true, // set false for offline
-      generateHighQualityLinkPreview: true, // make high preview link
+      markOnlineOnConnect: true, 
+      generateHighQualityLinkPreview: true, 
       getMessage: async (key) => {
          let jid = jidNormalizedUser(key.remoteJid)
          let msg = await store.loadMessage(jid, key.id)
-
          return msg?.message || ""
       },
-      msgRetryCounterCache, // Resolve waiting messages
-      defaultQueryTimeoutMs: undefined, // for this issues https://github.com/WhiskeySockets/Baileys/issues/276
+      msgRetryCounterCache, 
+      defaultQueryTimeoutMs: undefined, 
    })
    
    store.bind(Maria.ev)
 
-    // login use pairing code
    if (pairingCode && !Maria.authState.creds.registered) {
       if (useMobile) throw new Error('Cannot use pairing code with mobile api')
 
-      let phoneNumber
+      let mccKeys = PHONENUMBER_MCC ? Object.keys(PHONENUMBER_MCC) : []
+
       if (!!phoneNumber) {
          phoneNumber = phoneNumber.replace(/[^0-9]/g, '')
 
-         if (!Object.keys(PHONENUMBER_MCC).some(v => phoneNumber.startsWith(v))) {
+         if (!mccKeys.some(v => phoneNumber.startsWith(v))) {
             console.log(chalk.bgBlack(chalk.redBright("Start with country code of your WhatsApp Number, Example : +916909137213")))
             process.exit(0)
          }
@@ -157,7 +152,7 @@ const {  state, saveCreds } =await useMultiFileAuthState(`./session`)
          phoneNumber = await question(chalk.bgBlack(chalk.greenBright(`Please type your WhatsApp number 😍\nFor example: +916909137213 : `)))
          phoneNumber = phoneNumber.replace(/[^0-9]/g, '')
 
-         if (!Object.keys(PHONENUMBER_MCC).some(v => phoneNumber.startsWith(v))) {
+         if (!mccKeys.some(v => phoneNumber.startsWith(v))) {
             console.log(chalk.bgBlack(chalk.redBright("Start with country code of your WhatsApp Number, Example : +916909137213")))
 
             phoneNumber = await question(chalk.bgBlack(chalk.greenBright(`Please type your WhatsApp number 😍\nFor example: +916909137213 : `)))
@@ -335,7 +330,6 @@ const {  state, saveCreds } =await useMultiFileAuthState(`./session`)
     }
 }
 
-// Execution Entry Point with PIN Lock Check
 async function init() {
     await verifyPinLock()
     startMaria()
