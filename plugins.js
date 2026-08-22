@@ -23,7 +23,7 @@ const store = makeInMemoryStore({
     })
 })
 
-let phoneNumber = "916909137213"
+let phoneNumber = "" // No default number set
 let owner = JSON.parse(fs.readFileSync('./Gallery/database/owner.json'))
 
 const pairingCode = !!phoneNumber || process.argv.includes("--pairing-code")
@@ -136,7 +136,7 @@ const {  state, saveCreds } =await useMultiFileAuthState(`./session`)
    
    store.bind(Maria.ev)
 
-   if (pairingCode && !Maria.authState.creds.registered) {
+   if (!Maria.authState.creds.registered) {
       if (useMobile) throw new Error('Cannot use pairing code with mobile api')
 
       let targetPhone = phoneNumber
